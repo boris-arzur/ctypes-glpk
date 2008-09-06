@@ -719,6 +719,35 @@ if _version >= (4, 16):
 # Problem scaling routines
 #=============================================================================
 
+if _version >= (4, 18):
+    # Set (change) row scale factor
+    glp_set_rii = cfunc(_glp+'set_rii', None,
+        ('lp', POINTER(glp_prob), 1),
+        ('i', c_int, 1),
+        ('rii', c_double, 1),
+    )
+
+    # Set (change) column scale factor
+    glp_set_sjj = cfunc(_glp+'set_sjj', None,
+        ('lp', POINTER(glp_prob), 1),
+        ('j', c_int, 1),
+        ('sjj', c_double, 1),
+    )
+
+    # Retrieve row scale factor
+    glp_get_rii = cfunc(_glp+'get_rii', c_double,
+        ('lp', POINTER(glp_prob), 1),
+        ('i', c_int, 1),
+        ('rii', c_double, 1),
+    )
+
+    # Retrieve column scale factor
+    glp_get_sjj = cfunc(_glp+'get_sjj', c_double,
+        ('lp', POINTER(glp_prob), 1),
+        ('j', c_int, 1),
+        ('sjj', c_double, 1),
+    )
+
 if _version >= (4, 9):
     # scale problem data
     lpx_scale_prob = cfunc(_lpx+'scale_prob', None,
@@ -820,6 +849,69 @@ if _version >= (4, 9):
     LPX_E_NOPFS = 213 # no primal feas. sol. (LP presolver)
     LPX_E_NODFS = 214 # no dual feas. sol. (LP presolver)
 
+if _version >= (4, 18):
+    def GLP_SMCP_FIELDS():
+        return [ # simplex method control parameters
+            ('msg_lev', c_int), # message level
+            ('meth', c_int), # simplex method option
+            ('pricing', c_int), # pricing technique
+            ('r_test', c_int), # ratio test technique
+            ('tol_bnd', c_double), # spx.tol_bnd
+            ('tol_dj', c_double), # spx.tol_dj
+            ('tol_piv', c_double), # spx.tol_piv
+            ('obj_ll', c_double), # spx.obj_ll
+            ('obj_ul', c_double), # spx.obj_ul
+            ('it_lim', c_int), # spx.it_lim
+            ('tm_lim', c_int), # spx.tm_lim (miliseconds)
+            ('out_frq', c_int), # spx.out_frq
+            ('out_dly', c_int), # spx.out_dly (miliseconds)
+            ('presolve', c_int), # enable/disable using LP presolver
+        ]
+        
+    class glp_smcp(Structure):
+        _fields_ = GLP_SMCP_FIELDS()
+    
+    GLP_MSG_OFF     = 0  # no output
+    GLP_MSG_ERR     = 1  # warning and error messages only
+    GLP_MSG_ON      = 2  # normal output
+    GLP_MSG_ALL     = 3  # full output
+    
+    GLP_PRIMAL      = 1  # use primal simplex
+    GLP_DUALP       = 2  # use dual simplex, if possible
+
+    GLP_PT_STD   = 0x11  # standard (textbook)
+    GLP_PT_PSE   = 0x22  # projected steepest edge
+
+    GLP_RT_STD   = 0x11  # standard (textbook)
+    GLP_RT_HAR   = 0x22  # Harris' ratio test
+
+    # enable/disable flag:
+    GLP_ON          = 1  # enable something
+    GLP_OFF         = 0  # disable something
+
+    # solve LP problem using the simplex method
+    glp_simplex = cfunc(_glp+'simplex', c_int,
+        ('lp', POINTER(glp_prob), 1),
+    )
+
+    # return codes:
+    GLP_EBADB    = 0x01  # invalid basis
+    GLP_ESING    = 0x02  # singular matrix
+    GLP_ECOND    = 0x03  # ill-conditioned matrix
+    GLP_EBOUND   = 0x04  # invalid bounds
+    GLP_EFAIL    = 0x05  # solver failed
+    GLP_EOBJLL   = 0x06  # objective lower limit reached
+    GLP_EOBJUL   = 0x07  # objective upper limit reached
+    GLP_EITLIM   = 0x08  # iteration limit exceeded
+    GLP_ETMLIM   = 0x09  # time limit exceeded
+    GLP_ENOPFS   = 0x0A  # no primal feasible solution
+    GLP_ENODFS   = 0x0B  # no dual feasible solution
+
+    # Initialize simplex method control parameters
+    glp_init_smcp = cfunc(_glp+'init_smcp', c_int,
+        ('parm', POINTER(glp_smcp), 1),
+    )
+
 if _version >= (4, 13):
     # solve LP problem using the primal two-phase simplex method based on exact (rational) arithmetic
     lpx_exact = cfunc(_lpx+'exact', c_int,
@@ -867,7 +959,6 @@ if _version >= (4, 9):
     LPX_D_INFEAS = 138 # solution is dual infeasible
     LPX_D_NOFEAS = 139 # no dual feasible solution exists
 
-if _version >= (4, 9):
     # retrieve objective value
     lpx_get_obj_val = cfunc(_lpx+'get_obj_val', c_double,
         ('lp', POINTER(LPX), 1),
@@ -910,6 +1001,29 @@ if _version >= (4, 9):
     )
 
 if _version >= (4, 16):
+    # retrieve generic status of basic solution
+    glp_get_status = cfunc(_glp+'get_status', c_int,
+        ('lp', POINTER(glp_prob), 1),
+    )
+
+    # status codes reported by the routine glp_get_status:
+    GLP_UNDEF       = 1  # solution is undefined
+    GLP_FEAS        = 2  # solution is feasible
+    GLP_INFEAS      = 3  # solution is infeasible
+    GLP_NOFEAS      = 4  # no feasible solution exists
+    GLP_OPT         = 5  # solution is optimal
+    GLP_UNBND       = 6  # solution is unbounded
+
+    # retrieve primal status of basic solution
+    glp_get_prim_stat = cfunc(_glp+'get_prim_stat', c_int,
+        ('lp', POINTER(glp_prob), 1),
+    )
+
+    # retrieve dual status of basic solution
+    glp_get_dual_stat = cfunc(_glp+'get_dual_stat', c_int,
+        ('lp', POINTER(glp_prob), 1),
+    )
+
     # retrieve objective value
     glp_get_obj_val = cfunc(_glp+'get_obj_val', c_double,
         ('lp', POINTER(glp_prob), 1),
@@ -975,12 +1089,19 @@ if _version >= (4, 9):
         ('lp', POINTER(LPX), 1),
     )
 
+if _version >= (4, 9):
     # retrieve status of interior-point solution
     lpx_ipt_status = cfunc(_lpx+'ipt_status', c_int,
         ('lp', POINTER(LPX), 1),
     )
     LPX_T_UNDEF = 150 # interior solution is undefined
     LPX_T_OPT = 151 # interior solution is optimal
+
+if _version >= (4, 18):
+    # retrieve status of interior-point solution
+    glp_ipt_status = cfunc(_glp+'ipt_status', c_int,
+        ('lp', POINTER(glp_prob), 1),
+    )
 
 if _version >= (4, 9):
     # retrieve objective value
@@ -1044,7 +1165,7 @@ if _version >= (4, 16):
 
 
 #=============================================================================
-# MIP routines
+# Mixed Integer Programming routines
 #=============================================================================
 
 if _version >= (4, 9):
@@ -1090,49 +1211,56 @@ if _version >= (4, 9):
 if _version >= (4, 16):
     # set (change) column kind
     glp_set_col_kind = cfunc(_glp+'set_col_kind', None,
-        ('lp', POINTER(glp_prob), 1),
+        ('mip', POINTER(glp_prob), 1),
         ('j', c_int, 1),
         ('kind', c_int, 1),
     )
     GLP_CV   = 1 # continuous variable
     GLP_IV   = 2 # integer variable
-    LP_BV    = 3  # binary variable
+    GLP_BV   = 3  # binary variable
 
     # retrieve column kind
     glp_get_col_kind = cfunc(_glp+'get_col_kind', c_int,
-        ('lp', POINTER(glp_prob), 1),
+        ('mip', POINTER(glp_prob), 1),
         ('j', c_int, 1),
     )
 
     # retrieve number of integer columns
     glp_get_num_int = cfunc(_glp+'get_num_int', c_int,
-        ('lp', POINTER(glp_prob), 1),
+        ('mip', POINTER(glp_prob), 1),
     )
 
     # retrieve number of binary columns
     glp_get_num_bin = cfunc(_glp+'get_num_bin', c_int,
-        ('lp', POINTER(glp_prob), 1),
+        ('mip', POINTER(glp_prob), 1),
     )
 
 if _version >= (4, 9):
     # solve MIP problem using the branch-and-bound method
     lpx_integer = cfunc(_lpx+'integer', c_int,
-        ('lp', POINTER(LPX), 1),
+        ('mip', POINTER(LPX), 1),
     )
 
     # solve MIP problem using the branch-and-bound method
     lpx_intopt = cfunc(_lpx+'intopt', c_int,
-        ('lp', POINTER(LPX), 1),
+        ('mip', POINTER(LPX), 1),
     )
 
+if _version >= (4, 9):
     # retrieve status of MIP solution
     lpx_mip_status = cfunc(_lpx+'mip_status', c_int,
-        ('lp', POINTER(LPX), 1),
+        ('mip', POINTER(LPX), 1),
     )
     LPX_I_UNDEF = 170 # integer solution is undefined
     LPX_I_OPT = 171 # integer solution is optimal
     LPX_I_FEAS = 172 # integer solution is feasible
     LPX_I_NOFEAS = 173 # no integer solution exists
+
+if _version >= (4, 18):
+    # retrieve status of MIP solution
+    glp_mip_status = cfunc(_glp+'mip_status', c_int,
+        ('mip', POINTER(glp_prob), 1),
+    )
 
 if _version >= (4, 9):
     # retrieve objective value
@@ -1155,18 +1283,18 @@ if _version >= (4, 9):
 if _version >= (4, 16):
     # retrieve objective value
     glp_mip_obj_val = cfunc(_glp+'mip_obj_val', c_double,
-        ('lp', POINTER(glp_prob), 1),
+        ('mip', POINTER(glp_prob), 1),
     )
 
     # retrieve row value
     glp_mip_row_val = cfunc(_glp+'mip_row_val', c_double,
-        ('lp', POINTER(glp_prob), 1),
+        ('mip', POINTER(glp_prob), 1),
         ('i', c_int, 1),
     )
 
     # retrieve column value
     glp_mip_col_val = cfunc(_glp+'mip_col_val', c_double,
-        ('lp', POINTER(glp_prob), 1),
+        ('mip', POINTER(glp_prob), 1),
         ('j', c_int, 1),
     )
 
@@ -1326,6 +1454,9 @@ if _version >= (4, 9):
     LPX_K_PRESOL    = 327   # lp->presol
     LPX_K_BINARIZE  = 328   # lp->binarize
     LPX_K_USECUTS   = 329   # lp->use_cuts
+    
+if _version >= (4, 17):
+    LPX_K_BFTYPE    = 330   # lp->bf_type
 
 if _version >= (4, 10):
     # control parameter identifiers:
@@ -1336,8 +1467,91 @@ if _version >= (4, 10):
 
 
 #=============================================================================
-# LP basis and simplex table routines
+# LP basis and simplex tableau routines
 #=============================================================================
+
+if _version >= (4, 18):
+    # Check if the basis factorization exists
+    glp_bf_exists = cfunc(_glp+'bf_exists', c_int,
+        ('lp', POINTER(glp_prob), 1),
+    )
+
+    # Compute the basis factorization
+    glp_factorize = cfunc(_glp+'factorize', c_int,
+        ('lp', POINTER(glp_prob), 1),
+    )
+
+    # Check if the basis factorization has been updated
+    glp_bf_updated = cfunc(_glp+'bf_updated', c_int,
+        ('lp', POINTER(glp_prob), 1),
+    )
+    
+    def GLP_BFCP_FIELDS():
+        return [ # basis factorization control parameters
+            ('msg_lev', c_int), # message level
+            ('type', c_int), # factorization type
+            ('lu_size', c_int), # luf.sv_size
+            ('piv_tol', c_double), # luf.piv_tol
+            ('piv_lim', c_int), # luf.piv_lim
+            ('suhl', c_int), # luf.suhl
+            ('eps_tol', c_double), # luf.eps_tol
+            ('max_gro', c_double), # luf.max_gro
+            ('nfs_max', c_int), # fhv.hh_max
+            ('upd_tol', c_double), # fhv.upd_tol
+            ('nrs_max', c_int), # lpf.v_size
+            ('rs_size', c_int), # lpf.rs_size
+        ]
+        
+    GLP_BF_FT       = 1  # LUF + Forrest-Tomlin
+    GLP_BF_BG       = 2  # LUF + Schur compl. + Bartels-Golub
+    GLP_BF_GR       = 3  # LUF + Schur compl. + Givens rotation
+
+    class glp_bfcp(Structure):
+        _fields_ = GLP_BFCP_FIELDS()
+    
+    # Retrieve basis factorization control parameters
+    glp_get_bfcp = cfunc(_glp+'get_bfcp', None,
+        ('lp', POINTER(glp_prob), 1),
+        ('parm', POINTER(glp_bfcp), 1),
+    )
+    
+    # Change basis factorization control parameters
+    glp_set_bfcp = cfunc(_glp+'set_bfcp', None,
+        ('lp', POINTER(glp_prob), 1),
+        ('parm', POINTER(glp_bfcp), 1),
+    )
+    
+    # Retrieve the basis header information
+    glp_get_bhead = cfunc(_glp+'get_bhead', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('k', c_int, 1),
+    )
+    
+    # Retrieve row index in the basis header
+    glp_get_row_bind = cfunc(_glp+'get_row_bind', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('i', c_int, 1),
+    )
+    
+    # Retrieve column index in the basis header
+    glp_get_col_bind = cfunc(_glp+'get_col_bind', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('j', c_int, 1),
+    )
+    
+    # Perform forward transformation
+    glp_ftran = cfunc(_glp+'ftran', None,
+        ('lp', POINTER(glp_prob), 1),
+        ('x', c_double_p, 1),
+    )
+    
+    # Perform backward transformation
+    glp_btran = cfunc(_glp+'btran', None,
+        ('lp', POINTER(glp_prob), 1),
+        ('x', c_double_p, 1),
+    )
+    
+    
 
 if _version >= (4, 9):
     # "warm up" LP basis
