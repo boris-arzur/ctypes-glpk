@@ -866,6 +866,7 @@ if _version >= (4, 18):
             ('out_frq', c_int), # spx.out_frq
             ('out_dly', c_int), # spx.out_dly (miliseconds)
             ('presolve', c_int), # enable/disable using LP presolver
+            ('foo_bar', c_double*36), # (reserved)
         ]
         
     class glp_smcp(Structure):
@@ -875,7 +876,10 @@ if _version >= (4, 18):
     GLP_MSG_ERR     = 1  # warning and error messages only
     GLP_MSG_ON      = 2  # normal output
     GLP_MSG_ALL     = 3  # full output
+if _version >= (4, 20):
+    GLP_MSG_DBG     = 4  # debug output
     
+if _version >= (4, 18):
     GLP_PRIMAL      = 1  # use primal simplex
     GLP_DUALP       = 2  # use dual simplex, if possible
 
@@ -1241,12 +1245,69 @@ if _version >= (4, 9):
         ('mip', POINTER(LPX), 1),
     )
 
-    # solve MIP problem using the branch-and-bound method
+if _version >= (4, 20):
+    # branch-and-bound tree
+    class glp_tree(Structure):
+        _fields_ = [('_tree', c_double),]
+        
+    glp_iocp_cback_func = CFUNCTYPE(None, glp_tree, c_void_p)
+
+    def GLP_IOCP_FIELDS():
+        return [ # integer optimizer control parameters
+            ('msg_lev', c_int), # message level
+            ('br_tech', c_int), # branching technique
+            ('bt_tech', c_int), # backtracking technique
+            ('tol_int', c_double), # mip.tol_int
+            ('tol_obj', c_double), # mip.tol_obj
+            ('tm_lim', c_int), # mip.tm_lim (miliseconds)
+            ('out_frq', c_int), # mip.out_frq (miliseconds)
+            ('out_dly', c_int), # mip.out_dly (miliseconds)
+            ('cb_func', glp_iocp_cback_func), # mip.cb_func           
+            ('cb_info', c_void_p), # mip.cb_info
+            ('cb_size', c_int), # mip.cb_size
+            ('pp_tech', c_int), # preprocessing technique
+            ('mip_gap', c_double), # relative MIP gap tolerance
+            ('mir_cuts', c_int), # MIR cuts (GLP_ON/GLP_OFF) 
+            ('gmi_cuts', c_int), # Gomory's cuts (GLP_ON/GLP_OFF)
+            ('foo_bar', c_double*34), # (reserved)
+        ]
+        
+    class glp_iocp(Structure):
+        _fields_ = GLP_IOCP_FIELDS()
+
+    GLP_BR_FFV      = 1  # first fractional variable
+    GLP_BR_LFV      = 2  # last fractional variable
+    GLP_BR_MFV      = 3  # most fractional variable
+    GLP_BR_DTH      = 4  # heuristic by Driebeck and Tomlin
+
+    GLP_BT_DFS      = 1  # depth first search
+    GLP_BT_BFS      = 2  # breadth first search
+    GLP_BT_BLB      = 3  # best local bound
+    GLP_BT_BPH      = 4  # best projection heuristic
+
+if _version >= (4, 21):
+    GLP_PP_NONE     = 0  # disable preprocessing
+    GLP_PP_ROOT     = 1  # preprocessing only on root level
+    GLP_PP_ALL      = 2  # preprocessing on all levels
+
+if _version >= (4, 20):
+    # Solve MIP problem with the branch-and-cut method
+    glp_intopt = cfunc(_glp+'intopt', c_int,
+        ('mip', POINTER(glp_prob), 1),
+        ('parm', POINTER(glp_iocp), 1),
+    )
+
+    # Initialize integer optimizer control parameters
+    glp_init_iocp = cfunc(_glp+'init_iocp', None,
+        ('parm', POINTER(glp_iocp), 1),
+    )
+
+if _version >= (4, 9):
+    # solve MIP problem using the advanced B&B solver
     lpx_intopt = cfunc(_lpx+'intopt', c_int,
         ('mip', POINTER(LPX), 1),
     )
 
-if _version >= (4, 9):
     # retrieve status of MIP solution
     lpx_mip_status = cfunc(_lpx+'mip_status', c_int,
         ('mip', POINTER(LPX), 1),
@@ -1386,6 +1447,43 @@ if _version >= (4, 9):
         ('fname', c_char_p, 1),
     )
     
+if _version >= (4, 23):
+    # Read basic solution from text file
+    glp_read_sol = cfunc(_glp+'read_sol', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('fname', c_char_p, 1),
+    )
+    
+    # Write basic solution to text file
+    glp_write_sol = cfunc(_glp+'write_sol', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('fname', c_char_p, 1),
+    )
+    
+    # Read interior-point solution from text file
+    glp_read_ipt = cfunc(_glp+'read_ipt', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('fname', c_char_p, 1),
+    )
+    
+    # Write interior-point solution to text file
+    glp_write_ipt = cfunc(_glp+'write_ipt', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('fname', c_char_p, 1),
+    )
+    
+    # Read MIP solution from text file
+    glp_read_mip = cfunc(_glp+'read_mip', c_int,
+        ('mip', POINTER(glp_prob), 1),
+        ('fname', c_char_p, 1),
+    )
+    
+    # Write MIP solution to text file
+    glp_write_mip = cfunc(_glp+'write_mip', c_int,
+        ('mip', POINTER(glp_prob), 1),
+        ('fname', c_char_p, 1),
+    )
+    
 
 #=============================================================================
 # Control parameters and statistics routines
@@ -1500,6 +1598,7 @@ if _version >= (4, 18):
             ('upd_tol', c_double), # fhv.upd_tol
             ('nrs_max', c_int), # lpf.v_size
             ('rs_size', c_int), # lpf.rs_size
+            ('foo_bar', c_double*38), # (reserved)
         ]
         
     GLP_BF_FT       = 1  # LUF + Forrest-Tomlin
@@ -1559,6 +1658,7 @@ if _version >= (4, 9):
         ('lp', POINTER(LPX), 1),
     )
 
+if _version >= (4, 9):
     # compute row of the simplex table
     lpx_eval_tab_row = cfunc(_lpx+'eval_tab_row', c_int,
         ('lp', POINTER(LPX), 1),
@@ -1575,6 +1675,24 @@ if _version >= (4, 9):
         ('val', c_double_p, 1),
     )
 
+if _version >= (4, 25):
+    # compute row of the simplex tableau
+    glp_eval_tab_row = cfunc(_glp+'eval_tab_row', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('k', c_int, 1),
+        ('ind', c_int_p, 1),
+        ('val', c_double_p, 1),
+    )
+
+    # compute column of the simplex tableau
+    glp_eval_tab_col = cfunc(_glp+'eval_tab_col', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('k', c_int, 1),
+        ('ind', c_int_p, 1),
+        ('val', c_double_p, 1),
+    )
+
+if _version >= (4, 9):
     # transform explicitly specified row
     lpx_transform_row = cfunc(_lpx+'transform_row', c_int,
         ('lp', POINTER(LPX), 1),
@@ -1613,6 +1731,127 @@ if _version >= (4, 9):
 
 
 #=============================================================================
+# Branch-and-cut interface routines
+#=============================================================================
+
+if _version >= (4, 20):
+    # reason codes:
+    GLP_IROWGEN  = 0x01  # request for row generation
+    GLP_IBINGO   = 0x02  # better integer solution found
+    GLP_IHEUR    = 0x03  # request for heuristic solution
+    GLP_ICUTGEN  = 0x04  # request for cut generation
+    
+if _version >= (4, 21):
+    GLP_IBRANCH  = 0x05  # request for branching
+    GLP_ISELECT  = 0x06  # request for subproblem selection
+    GLP_IPREPRO  = 0x07  # request for preprocessing
+    
+if _version >= (4, 20):
+    # Determine reason for calling the callback routine
+    glp_ios_reason = cfunc(_glp+'ios_reason', c_int,
+        ('tree', POINTER(glp_tree), 1),
+    )
+
+    # Access the problem object
+    glp_ios_get_prob = cfunc(_glp+'ios_get_prob', POINTER(glp_prob),
+        ('tree', POINTER(glp_tree), 1),
+    )
+   
+    # Determine size of the branch-and-bound tree
+    glp_ios_tree_size = cfunc(_glp+'ios_tree_size', None,
+        ('tree', POINTER(glp_tree), 1),
+        ('a_cnt', c_int_p, 1),
+        ('n_cnt', c_int_p, 1),
+        ('t_cnt', c_int_p, 1),
+    )
+
+    # Determine current active subproblem
+    glp_ios_curr_node = cfunc(_glp+'ios_curr_node', c_int,
+        ('tree', POINTER(glp_tree), 1),
+    )
+
+    # Determine next active subproblem
+    glp_ios_next_node = cfunc(_glp+'ios_next_node', c_int,
+        ('tree', POINTER(glp_tree), 1),
+        ('p', c_int, 1),
+    )
+
+    # Determine previous active subproblem
+    glp_ios_prev_node = cfunc(_glp+'ios_prev_node', c_int,
+        ('tree', POINTER(glp_tree), 1),
+        ('p', c_int, 1),
+    )
+
+    # Determine parent subproblem
+    glp_ios_up_node = cfunc(_glp+'ios_up_node', c_int,
+        ('tree', POINTER(glp_tree), 1),
+        ('p', c_int, 1),
+    )
+
+    # Determine subproblem level
+    glp_ios_node_level = cfunc(_glp+'ios_node_level', c_int,
+        ('tree', POINTER(glp_tree), 1),
+        ('p', c_int, 1),
+    )
+
+    # Determine subproblem local bound
+    glp_ios_node_bound = cfunc(_glp+'ios_node_bound', c_double,
+        ('tree', POINTER(glp_tree), 1),
+        ('p', c_int, 1),
+    )
+
+    # Find active subproblem with best local bound
+    glp_ios_best_node = cfunc(_glp+'ios_best_node', c_int,
+        ('tree', POINTER(glp_tree), 1),
+    )
+
+    # Compute relative MIP gap
+    glp_ios_mip_gap = cfunc(_glp+'ios_mip_gap', c_double,
+        ('tree', POINTER(glp_tree), 1),
+    )
+
+if _version >= (4, 21):
+    # Access subproblem application-specific data
+    glp_ios_node_data = cfunc(_glp+'ios_node_data', None,
+        ('tree', POINTER(glp_tree), 1),
+        ('p', c_int, 1),
+    )
+
+    # Select subproblem to continue the search
+    glp_ios_select_node = cfunc(_glp+'ios_select_node', None,
+        ('tree', POINTER(glp_tree), 1),
+        ('p', c_int, 1),
+    )
+
+if _version >= (4, 20):
+    # Provide solution found by heuristic
+    glp_ios_heur_sol = cfunc(_glp+'ios_heur_sol', c_int,
+        ('tree', POINTER(glp_tree), 1),
+        ('x', c_double_p, 1),
+    )
+
+if _version >= (4, 21):
+    # Check if can branch upon specified variable
+    glp_ios_can_branch = cfunc(_glp+'ios_can_branch', c_int,
+        ('tree', POINTER(glp_tree), 1),
+        ('j', c_int, 1),
+    )
+
+    # Choose variable to branch upon
+    glp_ios_branch_upon = cfunc(_glp+'ios_branch_upon', None,
+        ('tree', POINTER(glp_tree), 1),
+        ('j', c_int, 1),
+        ('sel', c_int, 1),
+    )
+
+if _version >= (4, 20):
+    # Terminate the solution process
+    glp_ios_terminate = cfunc(_glp+'ios_terminate', None,
+        ('tree', POINTER(glp_tree), 1),
+    )
+
+
+#=============================================================================
 # Library environment routines
 #=============================================================================
 
@@ -1630,6 +1869,13 @@ if _version >= (4, 16):
     glp_version = cfunc(_glp+'version', c_char_p,
     )
     
+if _version >= (4, 21):
+    # Enable/disable terminal output
+    glp_term_out = cfunc(_glp+'term_out', None,
+        ('flag', c_int, 1),
+    )
+    
+if _version >= (4, 16):
     # Terminal hook function
     glp_term_hook_func = CFUNCTYPE(c_int, c_void_p, c_char_p)
 
@@ -1645,6 +1891,17 @@ if _version >= (4, 16):
         ('cpeak', c_int_p, 1),
         ('total', POINTER(glp_ulong), 1),
         ('tpeak', POINTER(glp_ulong), 1),
+    )
+    
+if _version >= (4, 19):
+    # Set memory usage limit
+    glp_mem_limit = cfunc(_glp+'mem_limit', None,
+        ('limit', c_int, 1),
+    )
+    
+if _version >= (4, 23):
+    # Free GLPK library environment
+    glp_free_env = cfunc(_glp+'free_env', None,
     )
     
         
