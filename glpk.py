@@ -1,4 +1,4 @@
-# ctypes-glpk - A ctypes-based Python wrapper for GLPK
+# ctypes-glpk - A Python wrapper for GLPK using ctypes
 
 # Copyright (c) 2008, Minh-Tri Pham
 # All rights reserved.
@@ -7,30 +7,36 @@
 
 #    * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
 #    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-#    * Neither the name of the <ORGANIZATION> nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+#    * Neither the name of the copyright holder of ctypes-glpk nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
 
 #THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# For further inquiries, please contact Minh-Tri Pham(pmtri80@gmail.com) for more information.
+# For further inquiries, please contact Minh-Tri Pham at pmtri80@gmail.com.
 # ---------------------------------------------------------------------
 #!/usr/bin/env python
 """ctypes-glpk - A ctypes-based Python wrapper for GLPK
 
-ctypes-glpk is a Python wrapper for GNU Linear Programming Kit (GLPK) based on ctypes.
+ctypes-glpk is a Python module which encapsulates the functionality of the GNU Linear Programming Kit (GLPK). The GLPK allows one to specify linear programs (LPs) and mixed integer programs (MIPs), and to solve them with either simplex, interior-point, or branch-and-cut algorithms. The goal of ctypes-glpk is to give one access to all documented functionality of GLPK in Python.
 
 :Author: Minh-Tri Pham <pmtri80@gmail.com>
-:Version: 0.1.0 (devel)
-:Released: September 2008 (devel)
+:Version: 0.2.0 (stable)
+:Released: September 2008 (stable)
 
-Requirement
-===========
+Availability
+============
 
-The only requirement is that you have GLPK installed on your platform. ctypes-glpk detects the existence of GLPK by calling 'glpsol -v'. It uses the corresponding shared library of GLPK to provide the interface.
+   To get the lastest version, see:
+   http://code.google.com/p/ctypes-glpk/
+
+Requirements
+============
+
+There are two requirements. First, GLPK must be installed on your platform. ctypes-glpk detects the existence of GLPK by calling 'glpsol -v'. It uses the corresponding shared library of GLPK to provide the functionality. Second, you need package 'ctypes' installed on your Python, which is a built-in starting from Python 2.5.
 
 Installation
 ============
 
-Just include this 'glpk.py' in your <Python>\lib\site-packages folder, or add a path to the file in your PYTHONPATH variable.
+No installation is required. Just import this module in your code and run. You can also include this module in your <Python>\lib\site-packages folder, or include the path to the file in your PYTHONPATH variable.
 
 Support
 -------
@@ -47,7 +53,16 @@ See the 'sample.c' file for an example of using GLPK in C, and the 'sample.py' f
 Change Log
 ==========
 
-To be updated.
+ctypes-glpk-0.2.0 stable release
+--------------------------------
+
+- Added wrapping functions for GLPK from version 4.10 to version 4.31
+
+ctypes-glpk-0.1.0 development release
+-------------------------------------
+
+- Added wrapping functions for GLPK version 4.9
+- Created prject ctypes-glpk
 
 """
 
@@ -147,7 +162,7 @@ elif _version >= (4, 16):
 # Problem Object
 #=============================================================================
 
-if _version >= (4, 9):
+if _version >= (4, 9) and _version <= (4, 15):
     def LPX_FIELDS():
         return [] # to be expanded in the future
 
@@ -155,7 +170,13 @@ if _version >= (4, 9):
         _fields_ = LPX_FIELDS()
 
 if _version >= (4, 16):
-    glp_prob = LPX
+    def GLP_PROB_FIELDS():
+        return [] # to be expanded in the future
+
+    class glp_prob(Structure):
+        _fields_ = GLP_PROB_FIELDS()
+
+    LPX = glp_prob
 
 
 #=============================================================================
@@ -325,6 +346,13 @@ if _version >= (4, 9):
         ('num', c_int_p, 1),
     )
 
+if _version >= (4, 29):
+    # Erase problem object content
+    lpx_erase_prob = cfunc(_lpx+'erase_prob', None,
+        ('lp', POINTER(LPX), 1),
+    )
+    
+if _version >= (4, 9):
     # delete problem object
     lpx_delete_prob = cfunc(_lpx+'delete_prob', None,
         ('lp', POINTER(LPX), 1),
@@ -754,32 +782,36 @@ if _version >= (4, 9):
         ('lp', POINTER(LPX), 1),
     )
 
+if _version >= (4, 31):
+    # scaling options:
+    GLP_SF_GM    = 0x01  # perform geometric mean scaling
+    GLP_SF_EQ    = 0x10  # perform equilibration scaling
+    GLP_SF_2N    = 0x20  # round scale factors to power of two
+    GLP_SF_SKIP  = 0x40  # skip scaling if problem is well scaled
+    GLP_SF_AUTO  = 0x80  # choose scaling options automatically
+
+    # scale problem data
+    glp_scale_prob = cfunc(_glp+'scale_prob', None,
+        ('lp', POINTER(glp_prob), 1),
+        ('flags', c_int, 1),
+    )
+
+if _version >= (4, 9):
     # unscale problem data
     lpx_unscale_prob = cfunc(_lpx+'unscale_prob', None,
         ('lp', POINTER(LPX), 1),
+    )
+
+if _version >= (4, 18):
+    # unscale problem data
+    glp_unscale_prob = cfunc(_glp+'unscale_prob', None,
+        ('lp', POINTER(glp_prob), 1),
     )
 
 
 #=============================================================================
 # LP basis constructing routines
 #=============================================================================
-
-if _version >= (4, 9):
-    # construct standard initial LP basis
-    lpx_std_basis = cfunc(_lpx+'std_basis', None,
-        ('lp', POINTER(LPX), 1),
-    )
-
-    # construct advanced initial LP basis
-    lpx_adv_basis = cfunc(_lpx+'adv_basis', None,
-        ('lp', POINTER(LPX), 1),
-    )
-
-if _version >= (4, 10):
-    # construct advanced initial LP basis
-    lpx_cpx_basis = cfunc(_lpx+'cpx_basis', None,
-        ('lp', POINTER(LPX), 1),
-    )
 
 if _version >= (4, 9):
     # set (change) row status
@@ -821,6 +853,40 @@ if _version >= (4, 16):
         ('stat', c_int, 1),
     )
     
+if _version >= (4, 9):
+    # construct standard initial LP basis
+    lpx_std_basis = cfunc(_lpx+'std_basis', None,
+        ('lp', POINTER(LPX), 1),
+    )
+
+    # construct advanced initial LP basis
+    lpx_adv_basis = cfunc(_lpx+'adv_basis', None,
+        ('lp', POINTER(LPX), 1),
+    )
+
+if _version >= (4, 31):
+    # construct standard initial LP basis
+    glp_std_basis = cfunc(_glp+'std_basis', None,
+        ('lp', POINTER(glp_prob), 1),
+    )
+
+    # construct advanced initial LP basis
+    glp_adv_basis = cfunc(_glp+'adv_basis', None,
+        ('lp', POINTER(glp_prob), 1),
+    )
+
+if _version >= (4, 10):
+    # construct advanced initial LP basis
+    lpx_cpx_basis = cfunc(_lpx+'cpx_basis', None,
+        ('lp', POINTER(LPX), 1),
+    )
+
+if _version >= (4, 31):
+    # Construct Bixby's initial LP basis
+    glp_cpx_basis = cfunc(_glp+'cpx_basis', None,
+        ('lp', POINTER(glp_prob), 1),
+    )
+
 
 #=============================================================================
 # Simplex method routine
@@ -881,8 +947,12 @@ if _version >= (4, 20):
     
 if _version >= (4, 18):
     GLP_PRIMAL      = 1  # use primal simplex
-    GLP_DUALP       = 2  # use dual simplex, if possible
+    GLP_DUALP       = 2  # use dual; if it fails, use primal
 
+if _version >= (4, 31):
+    GLP_DUAL        = 3  # use dual simplex
+
+if _version >= (4, 18):
     GLP_PT_STD   = 0x11  # standard (textbook)
     GLP_PT_PSE   = 0x22  # projected steepest edge
 
@@ -912,6 +982,11 @@ if _version >= (4, 18):
     GLP_ENOPFS   = 0x0A  # no primal feasible solution
     GLP_ENODFS   = 0x0B  # no dual feasible solution
 
+if _version >= (4, 20):
+    GLP_EROOT    = 0x0C  # root LP optimum not provided
+    GLP_ESTOP    = 0x0D  # serach terminated by application
+
+if _version >= (4, 18):
     # Initialize simplex method control parameters
     glp_init_smcp = cfunc(_glp+'init_smcp', c_int,
         ('parm', POINTER(glp_smcp), 1),
@@ -1411,6 +1486,42 @@ if _version >= (4, 9):
         ('fname', c_char_p, 1),
     )
     
+if _version >= (4, 29):
+    # MPS file format:
+    GLP_MPS_DECK    = 1  # fixed (ancient)
+    GLP_MPS_FILE    = 2  # free (modern)
+
+    # read problem data in MPS format
+    glp_read_mps = cfunc(_glp+'read_mps', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('fmt', c_int, 1),
+        ('parm', c_void_p, 1),
+        ('fname', c_char_p, 1),
+    )
+    
+    # write problem data in MPS format
+    glp_write_mps = cfunc(_glp+'write_mps', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('fmt', c_int, 1),
+        ('parm', c_void_p, 1),
+        ('fname', c_char_p, 1),
+    )
+    
+    # read problem data in CPLEX LP format
+    glp_read_lp = cfunc(_glp+'read_lp', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('parm', c_void_p, 1),
+        ('fname', c_char_p, 1),
+    )
+    
+    # write problem data in CPLEX LP format
+    glp_write_lp = cfunc(_glp+'write_lp', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('parm', c_void_p, 1),
+        ('fname', c_char_p, 1),
+    )
+    
+if _version >= (4, 9):
     # read model written in GNU MathProg modeling language
     lpx_read_model = cfunc(_lpx+'read_model', POINTER(LPX),
         ('model', c_char_p, 1),
@@ -1557,6 +1668,9 @@ if _version >= (4, 9):
 if _version >= (4, 17):
     LPX_K_BFTYPE    = 330   # lp->bf_type
 
+if _version >= (4, 24):
+    LPX_K_MIPGAP    = 331   # lp->mip_gap
+
 if _version >= (4, 10):
     # control parameter identifiers:
     LPX_C_COVER     = 0x01  # mixed cover cuts
@@ -1564,6 +1678,8 @@ if _version >= (4, 10):
     LPX_C_GOMORY    = 0x04  # Gomory's mixed integer cuts
     LPX_C_ALL       = 0xFF  # all cuts
 
+if _version >= (4, 23):
+    LPX_C_MIR       = 0x08  # mixed integer rounding cuts
 
 #=============================================================================
 # LP basis and simplex tableau routines
@@ -1860,16 +1976,24 @@ if _version >= (4, 9) and _version <= (4, 15):
     glp_version = lpx_version
 
 if _version >= (4, 16):
+    # Determine library version
+    glp_version = cfunc(_glp+'version', c_char_p,
+    )
+    
+if _version >= (4, 16) and _version <= (4, 27):
     class glp_ulong(Structure):
         _fields_ = [
             ('lo', c_uint),
             ('hi', c_uint),
         ]
 
-    # Determine library version
-    glp_version = cfunc(_glp+'version', c_char_p,
-    )
-    
+if _version >= (4, 28):
+    class glp_long(Structure):
+        _fields_ = [
+            ('lo', c_int),
+            ('hi', c_int),
+        ]
+
 if _version >= (4, 21):
     # Enable/disable terminal output
     glp_term_out = cfunc(_glp+'term_out', None,
@@ -1886,12 +2010,22 @@ if _version >= (4, 16):
         ('info', c_void_p, 1),
     )
     
+if _version >= (4, 16) and _version <= (4, 27):
     # Get memory usage information
     glp_mem_usage = cfunc(_glp+'mem_usage', None,
         ('count', c_int_p, 1),
         ('cpeak', c_int_p, 1),
         ('total', POINTER(glp_ulong), 1),
         ('tpeak', POINTER(glp_ulong), 1),
+    )
+    
+if _version >= (4, 28):
+    # Get memory usage information
+    glp_mem_usage = cfunc(_glp+'mem_usage', None,
+        ('count', c_int_p, 1),
+        ('cpeak', c_int_p, 1),
+        ('total', POINTER(glp_long), 1),
+        ('tpeak', POINTER(glp_long), 1),
     )
     
 if _version >= (4, 19):

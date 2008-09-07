@@ -36,7 +36,7 @@ int main(void)
     ia[7] = 3; ja[7] = 2; ar[7] = 2.0; /* a[3,2] = 2 */
     ia[8] = 2; ja[8] = 3; ar[8] = 5.0; /* a[2,3] = 5 */
     ia[9] = 3; ja[9] = 3; ar[9] = 6.0; /* a[3,3] = 6 */
-   lpx_load_matrix(lp, 9, ia, ja, ar);
+    lpx_load_matrix(lp, 9, ia, ja, ar);
     lpx_simplex(lp);
     Z = lpx_get_obj_val(lp);
     x1 = lpx_get_col_prim(lp, 1);
