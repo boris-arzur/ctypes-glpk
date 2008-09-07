@@ -896,6 +896,7 @@ if _version >= (4, 18):
     # solve LP problem using the simplex method
     glp_simplex = cfunc(_glp+'simplex', c_int,
         ('lp', POINTER(glp_prob), 1),
+        ('parm', POINTER(glp_smcp), 1),
     )
 
     # return codes:
