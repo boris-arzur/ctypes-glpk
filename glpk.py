@@ -22,8 +22,8 @@
 ctypes-glpk is a Python module which encapsulates the functionality of the GNU Linear Programming Kit (GLPK). The GLPK allows one to specify linear programs (LPs) and mixed integer programs (MIPs), and to solve them with either simplex, interior-point, or branch-and-cut algorithms. The goal of ctypes-glpk is to give one Python access to all documented functionality of GLPK.
 
 :Author: Minh-Tri Pham <pmtri80@gmail.com>
-:Version: 0.2.0 (stable)
-:Released: September 2008 (stable)
+:Version: 0.2.1 (stable)
+:Released: October 2008 (stable)
 
 Availability
 ============
@@ -45,7 +45,7 @@ Support
 -------
 
 - Platforms: Win32, Linux, and Mac OS
-- GLPK: 4.9 to 4.31
+- GLPK: 4.9 to 4.32
 
 How to use
 ==========
@@ -56,6 +56,11 @@ See the 'sample.c' file for an example of using GLPK in C, and the 'sample.py' f
 Change Log
 ==========
 
+ctypes-glpk-0.2.1 stable release
+--------------------------------
+
+- Added wrapping functions for GLPK version 4.32
+
 ctypes-glpk-0.2.0 stable release
 --------------------------------
 
@@ -65,7 +70,7 @@ ctypes-glpk-0.1.0 development release
 -------------------------------------
 
 - Added wrapping functions for GLPK version 4.9
-- Created prject ctypes-glpk
+- Created project ctypes-glpk
 
 """
 
@@ -917,6 +922,9 @@ if _version >= (4, 9):
     LPX_E_NOCONV = 212 # no convergence (interior)
     LPX_E_NOPFS = 213 # no primal feas. sol. (LP presolver)
     LPX_E_NODFS = 214 # no dual feas. sol. (LP presolver)
+    
+if _version >= (4, 32):
+    LPX_E_MIPGAP    = 215   # relative mip gap tolerance reached
 
 if _version >= (4, 18):
     def GLP_SMCP_FIELDS():
@@ -988,6 +996,9 @@ if _version >= (4, 18):
 if _version >= (4, 20):
     GLP_EROOT    = 0x0C  # root LP optimum not provided
     GLP_ESTOP    = 0x0D  # serach terminated by application
+
+if _version >= (4, 32):
+    GLP_EMIPGAP  = 0x0E  # relative mip gap tolerance reached
 
 if _version >= (4, 18):
     # Initialize simplex method control parameters
@@ -1348,7 +1359,12 @@ if _version >= (4, 20):
             ('mip_gap', c_double), # relative MIP gap tolerance
             ('mir_cuts', c_int), # MIR cuts (GLP_ON/GLP_OFF) 
             ('gmi_cuts', c_int), # Gomory's cuts (GLP_ON/GLP_OFF)
-            ('foo_bar', c_double*34), # (reserved)
+            ('cov_cuts', c_int), # cover cuts     (GLP_ON/GLP_OFF)
+            ('clq_cuts', c_int), # clique cuts    (GLP_ON/GLP_OFF) 
+            ('presolve', c_int), # enable/disable using MIP presolver
+            ('binarize', c_int), # try to binarize integer variables
+            ('foo_bar', c_double*30), # (reserved)
+            ('fn_sol', c_char_p), # file name to write solution found
         ]
         
     class glp_iocp(Structure):
@@ -1936,18 +1952,61 @@ if _version >= (4, 21):
         ('tree', POINTER(glp_tree), 1),
         ('p', c_int, 1),
     )
+    
+if _version >= (4, 32):
+    def GLP_ATTR_FIELDS():
+        return [ # additional row attributes
+            ('level', c_int), # subproblem level at which the row was added
+            ('origin', c_int), # the row origin flag
+            ('klass', c_int), # the row class descriptor
+            ('foo_bar', c_double*7), # (reserved)
+        ]
+        
+    GLP_RF_REG      = 0  # regular constraint
+    GLP_RF_LAZY     = 1  # "lazy" constraint
+    GLP_RF_CUT      = 2  # cutting plane constraint
 
-    # Select subproblem to continue the search
-    glp_ios_select_node = cfunc(_glp+'ios_select_node', None,
+    GLP_RF_GMI      = 1  # Gomory's mixed integer cut
+    GLP_RF_MIR      = 2  # mixed integer rounding cut
+    GLP_RF_COV      = 3  # mixed cover cut
+    GLP_RF_CLQ      = 4  # clique cut
+
+    class glp_attr(Structure):
+        _fields_ = GLP_ATTR_FIELDS()
+
+    # retrieve additional row attributes
+    glp_ios_row_attr = cfunc(_glp+'ios_row_attr', None,
         ('tree', POINTER(glp_tree), 1),
-        ('p', c_int, 1),
+        ('i', c_int, 1),
+        ('attr', POINTER(glp_attr), 1),
     )
 
-if _version >= (4, 20):
-    # Provide solution found by heuristic
-    glp_ios_heur_sol = cfunc(_glp+'ios_heur_sol', c_int,
+    # determine current size of the cut pool
+    glp_ios_pool_size = cfunc(_glp+'ios_pool_size', c_int,
         ('tree', POINTER(glp_tree), 1),
-        ('x', c_double_p, 1),
+    )
+
+    # add row (constraint) to the cut pool
+    glp_ios_add_row = cfunc(_glp+'ios_add_row', c_int,
+        ('tree', POINTER(glp_tree), 1),
+        ('name', c_char_p, 1),
+        ('klass', c_int, 1),
+        ('flags', c_int, 1),
+        ('len', c_int, 1),
+        ('ind', c_int_p, 1),
+        ('val', c_double_p, 1),
+        ('rhs', c_double, 1),
+    )
+
+    # remove row (constraint) from the cut pool
+    glp_ios_del_row = cfunc(_glp+'ios_del_row', None,
+        ('tree', POINTER(glp_tree), 1),
+        ('i', c_int, 1),
+    )
+
+    # remove all rows (constraints) from the cut pool
+    glp_ios_clear_pool = cfunc(_glp+'ios_clear_pool', None,
+        ('tree', POINTER(glp_tree), 1),
     )
 
 if _version >= (4, 21):
@@ -1962,6 +2021,21 @@ if _version >= (4, 21):
         ('tree', POINTER(glp_tree), 1),
         ('j', c_int, 1),
         ('sel', c_int, 1),
+    )
+
+if _version >= (4, 21):
+    # Select subproblem to continue the search
+    glp_ios_select_node = cfunc(_glp+'ios_select_node', None,
+        ('tree', POINTER(glp_tree), 1),
+        ('p', c_int, 1),
+    )
+    
+
+if _version >= (4, 20):
+    # Provide solution found by heuristic
+    glp_ios_heur_sol = cfunc(_glp+'ios_heur_sol', c_int,
+        ('tree', POINTER(glp_tree), 1),
+        ('x', c_double_p, 1),
     )
 
 if _version >= (4, 20):
