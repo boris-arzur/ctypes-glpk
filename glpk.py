@@ -59,7 +59,7 @@ Change Log
 ctypes-glpk-0.2.2 release
 -------------------------
 
-- Fixed a bug in reading GLPK's version from glpsol -- thanks Steve Jackson raising the issue
+- Fixed a bug in reading GLPK's version from glpsol -- thanks Steve Jackson for raising the issue
 - Fixed a bug in defining glp_erase_prob() -- thanks Steve Jackson for raising the issue and giving a bug fix
 
 ctypes-glpk-0.2.1 stable release
@@ -105,12 +105,7 @@ def _load_glpk():
 
         # Version GLPK detected!!
         i = tokens.index('LP/MIP')
-        if tokens[i+1] == 'Solver,':
-            i += 3
-        else:
-            i += 2
-            
-        version_string = tokens[i]
+        version_string = tokens[i+3] if tokens[i+1] == 'Solver,' else tokens[i+2] # not safe, but works for now
         version = version_string.split('.')
         version = tuple([int(i) for i in version[:2]])
         
