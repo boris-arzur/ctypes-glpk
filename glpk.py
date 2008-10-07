@@ -117,21 +117,25 @@ def _load_glpk():
     except Exception, e:
         raise ImportError("Failed to run 'glpsol' to extract version number. GLPK may not be properly installed.")
 
+    def _load_lib(dllname):
+        try:
+            return cdll.LoadLibrary(dllname)
+        except:
+            raise ImportError("Cannot import GLPK's shared library (" + dllname + "). Make sure its path is included in your system's PATH variable.")
+
     # Attempt to load the DLL
     if os.name == 'posix' and sys.platform.startswith('linux'):
-        dllname = 'libglpk.so'
+        try:
+            glpk_lib = _load_lib('libglpk.so')
+        except ImportError:
+            glpk_lib = _load_lib('libglpk.so.0')
     elif os.name == 'posix' and sys.platform.startswith('darwin'):
-        dllname = 'libglpk.dylib'
+        glpk_lib = _load_lib('libglpk.dylib')
     elif os.name == 'nt':
-        dllname = 'glpk'+str(version[0])+str(version[1])+'.dll'
+        glpk_lib = _load_lib('glpk'+str(version[0])+str(version[1])+'.dll')
     else:
         raise ImportError('Platform '+str(os.name)+' is currently not supported.')
 
-    try:
-        glpk_lib = cdll.LoadLibrary(dllname)
-    except:
-        raise ImportError("Cannot import GLPK's shared library (" + dllname + "). Make sure its path is included in your system's PATH variable.")
-        
     return version, glpk_lib
     
 _version, _glpk_lib = _load_glpk()
@@ -371,7 +375,7 @@ if _version >= (4, 9):
 if _version >= (4, 29):
     # Erase problem object content
     glp_erase_prob = cfunc(_glp+'erase_prob', None, 
-        ('lp', POINTER(LPX), 1),
+        ('lp', POINTER(glp_prob), 1),
     )
 # -- End of bug fix by Steve Jackson, Oct'08
     
