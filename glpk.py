@@ -22,7 +22,7 @@
 ctypes-glpk is a Python module which encapsulates the functionality of the GNU Linear Programming Kit (GLPK). The GLPK allows one to specify linear programs (LPs) and mixed integer programs (MIPs), and to solve them with either simplex, interior-point, or branch-and-cut algorithms. The goal of ctypes-glpk is to give one Python access to all documented functionality of GLPK.
 
 :Author: Minh-Tri Pham <pmtri80@gmail.com>
-:Version: 0.2.1 (stable)
+:Version: 0.2.2 (stable)
 :Released: October 2008 (stable)
 
 Availability
@@ -55,6 +55,12 @@ See the 'sample.c' file for an example of using GLPK in C, and the 'sample.py' f
 
 Change Log
 ==========
+
+ctypes-glpk-0.2.2 release
+-------------------------
+
+- Fixed a bug in reading GLPK's version from glpsol -- thanks Steve Jackson raising the issue
+- Fixed a bug in defining glp_erase_prob() -- thanks Steve Jackson for raising the issue and giving a bug fix
 
 ctypes-glpk-0.2.1 stable release
 --------------------------------
@@ -96,8 +102,15 @@ def _load_glpk():
         fi, fo = os.popen4('glpsol -v')
         fi.close()
         tokens = fo.read().split()
+
         # Version GLPK detected!!
-        version_string = tokens[tokens.index('Version')+1]
+        i = tokens.index('LP/MIP')
+        if tokens[i+1] == 'Solver,':
+            i += 3
+        else:
+            i += 2
+            
+        version_string = tokens[i]
         version = version_string.split('.')
         version = tuple([int(i) for i in version[:2]])
         
@@ -354,11 +367,13 @@ if _version >= (4, 9):
         ('num', c_int_p, 1),
     )
 
+# -- Begin of bug fix by Steve Jackson, Oct'08
 if _version >= (4, 29):
     # Erase problem object content
-    lpx_erase_prob = cfunc(_lpx+'erase_prob', None,
+    glp_erase_prob = cfunc(_glp+'erase_prob', None, 
         ('lp', POINTER(LPX), 1),
     )
+# -- End of bug fix by Steve Jackson, Oct'08
     
 if _version >= (4, 9):
     # delete problem object
