@@ -22,7 +22,7 @@
 ctypes-glpk is a Python module which encapsulates the functionality of the GNU Linear Programming Kit (GLPK). The GLPK allows one to specify linear programs (LPs) and mixed integer programs (MIPs), and to solve them with either simplex, interior-point, or branch-and-cut algorithms. The goal of ctypes-glpk is to give one Python access to all documented functionality of GLPK.
 
 :Author: Minh-Tri Pham <pmtri80@gmail.com>
-:Version: 0.2.2 (stable)
+:Version: 0.2.3 (stable)
 :Released: October 2008 (stable)
 
 Availability
@@ -55,6 +55,11 @@ See the 'sample.c' file for an example of using GLPK in C, and the 'sample.py' f
 
 Change Log
 ==========
+
+ctypes-glpk-0.2.3 release
+-------------------------
+
+- Fixed a number of bugs -- thanks Steve Jackson for raising the issue
 
 ctypes-glpk-0.2.2 release
 -------------------------
@@ -788,14 +793,12 @@ if _version >= (4, 18):
     glp_get_rii = cfunc(_glp+'get_rii', c_double,
         ('lp', POINTER(glp_prob), 1),
         ('i', c_int, 1),
-        ('rii', c_double, 1),
     )
 
     # Retrieve column scale factor
     glp_get_sjj = cfunc(_glp+'get_sjj', c_double,
         ('lp', POINTER(glp_prob), 1),
         ('j', c_int, 1),
-        ('sjj', c_double, 1),
     )
 
 if _version >= (4, 9):
@@ -895,6 +898,7 @@ if _version >= (4, 31):
     # construct advanced initial LP basis
     glp_adv_basis = cfunc(_glp+'adv_basis', None,
         ('lp', POINTER(glp_prob), 1),
+        ('flags', c_int, 1),
     )
 
 if _version >= (4, 10):
@@ -1016,9 +1020,10 @@ if _version >= (4, 32):
 
 if _version >= (4, 18):
     # Initialize simplex method control parameters
-    glp_init_smcp = cfunc(_glp+'init_smcp', c_int,
+    glp_init_smcp = cfunc(_glp+'init_smcp', None,
         ('parm', POINTER(glp_smcp), 1),
     )
+    # Return type on GLPK doc is int, while the actual return type is None -- found and fixed by Steve Jackson
 
 if _version >= (4, 13):
     # solve LP problem using the primal two-phase simplex method based on exact (rational) arithmetic
@@ -1648,7 +1653,7 @@ if _version >= (4, 9):
     )
     
     # query integer control parameter
-    lpx_set_int_parm = cfunc(_lpx+'set_int_parm', c_int,
+    lpx_get_int_parm = cfunc(_lpx+'get_int_parm', c_int,
         ('lp', POINTER(LPX), 1),
         ('parm', c_int, 1),
     )
@@ -1661,7 +1666,7 @@ if _version >= (4, 9):
     )
     
     # query real control parameter
-    lpx_set_real_parm = cfunc(_lpx+'set_real_parm', c_double,
+    lpx_get_real_parm = cfunc(_lpx+'get_real_parm', c_double,
         ('lp', POINTER(LPX), 1),
         ('parm', c_int, 1),
     )
@@ -1962,7 +1967,7 @@ if _version >= (4, 20):
 
 if _version >= (4, 21):
     # Access subproblem application-specific data
-    glp_ios_node_data = cfunc(_glp+'ios_node_data', None,
+    glp_ios_node_data = cfunc(_glp+'ios_node_data', c_void_p,
         ('tree', POINTER(glp_tree), 1),
         ('p', c_int, 1),
     )
