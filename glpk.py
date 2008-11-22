@@ -45,7 +45,7 @@ Support
 -------
 
 - Platforms: Win32, Linux, and Mac OS
-- GLPK: 4.9 to 4.32
+- GLPK: 4.9 to 4.33
 
 How to use
 ==========
@@ -56,16 +56,21 @@ See the 'sample.c' file for an example of using GLPK in C, and the 'sample.py' f
 Change Log
 ==========
 
+ctypes-glpk-0.2.4 release
+-------------------------
+
+- Added wrapping functions for GLPK version 4.33
+
 ctypes-glpk-0.2.3 release
 -------------------------
 
-- Fixed a number of bugs -- thanks Steve Jackson for raising the issue
+- Fixed a number of bugs -- thanks Steve Jackson for having raised the issues
 
 ctypes-glpk-0.2.2 release
 -------------------------
 
-- Fixed a bug in reading GLPK's version from glpsol -- thanks Steve Jackson for raising the issue
-- Fixed a bug in defining glp_erase_prob() -- thanks Steve Jackson for raising the issue and giving a bug fix
+- Fixed a bug in reading GLPK's version from glpsol -- thanks Steve Jackson for having raised the issue
+- Fixed a bug in defining glp_erase_prob() -- thanks Steve Jackson for having raised the issue and having given a bug fix
 
 ctypes-glpk-0.2.1 stable release
 --------------------------------
@@ -506,6 +511,15 @@ if _version >= (4, 16):
         ('num', c_int_p, 1),
     )
 
+if _version >= (4, 33):
+    # copy problem object content
+    glp_copy_prob = cfunc(_glp+'copy_prob', None,
+        ('dest', POINTER(glp_prob), 1),
+        ('prob', POINTER(glp_prob), 1),
+        ('names', c_int, 1),
+    )
+
+if _version >= (4, 9):
     # delete problem object
     glp_delete_prob = cfunc(_glp+'delete_prob', None,
         ('lp', POINTER(glp_prob), 1),
@@ -1017,6 +1031,12 @@ if _version >= (4, 20):
 
 if _version >= (4, 32):
     GLP_EMIPGAP  = 0x0E  # relative mip gap tolerance reached
+    
+if _version >= (4, 33):    
+    GLP_ENOFEAS     = 0x0F  # no primal/dual feasible solution
+    GLP_ENOCVG      = 0x10  # no convergence
+    GLP_EINSTAB     = 0x11  # numerical instability
+
 
 if _version >= (4, 18):
     # Initialize simplex method control parameters
@@ -1029,6 +1049,13 @@ if _version >= (4, 13):
     # solve LP problem using the primal two-phase simplex method based on exact (rational) arithmetic
     lpx_exact = cfunc(_lpx+'exact', c_int,
         ('lp', POINTER(LPX), 1),
+    )
+
+if _version >= (4, 33):
+    # solve LP problem in exact arithmetic
+    glp_exact = cfunc(_glp+'exact', c_int,
+        ('lp', POINTER(glp_prob), 1),
+        ('parm', POINTER(glp_smcp), 1),
     )
 
 
@@ -1184,6 +1211,13 @@ if _version >= (4, 9):
         ('lp', POINTER(LPX), 1),
     )
 
+if _version >= (4, 33):
+    # determine variable causing unboundness
+    glp_get_unbnd_ray = cfunc(_glp+'get_unbnd_ray', c_int,
+        ('lp', POINTER(glp_prob), 1),
+    )
+
+if _version >= (4, 9):
     # check Karush-Kuhn-Tucker conditions
     lpx_check_kkt = cfunc(_lpx+'check_kkt', None,
         ('lp', POINTER(LPX), 1),
@@ -1197,9 +1231,16 @@ if _version >= (4, 9):
 #=============================================================================
 
 if _version >= (4, 9):
-    # solve LP problem using the primal-dual interiorpoint method
+    # solve LP problem using the primal-dual interior point method
     lpx_interior = cfunc(_lpx+'interior', c_int,
         ('lp', POINTER(LPX), 1),
+    )
+
+if _version >= (4, 33):
+    # solve LP problem with the interior point method
+    glp_interior = cfunc(_glp+'interior', c_int,
+        ('lp', POINTER(LPX), 1),
+        ('parm', c_void_p, 1),
     )
 
 if _version >= (4, 9):
@@ -1636,6 +1677,62 @@ if _version >= (4, 23):
     
 
 #=============================================================================
+# Subroutines for processing MathProg models
+#=============================================================================
+
+if _version >= (4, 33):
+    # MathProg translator workspace
+    class glp_tran(Structure):
+        _fields_ = [('_opaque_tran', c_double),]
+        
+    # MathProg solution indicator:
+    GLP_MPL_SOL        = 1  # basic solution
+    GLP_MPL_IPT        = 2  # interior-point solution
+    GLP_MPL_MIP        = 3  # mixed integer solution
+
+    # allocate the MathProg translator workspace
+    glp_mpl_alloc_wksp = cfunc(_glp+'mpl_alloc_wksp', POINTER(glp_tran),
+    )
+    
+    # read and translate model section
+    glp_mpl_read_model = cfunc(_glp+'mpl_read_model', c_int,
+        ('tran', POINTER(glp_tran), 1),
+        ('fname', c_char_p, 1),
+        ('skip', c_int, 1),
+    )
+    
+    # read and translate data section
+    glp_mpl_read_data = cfunc(_glp+'mpl_read_data', c_int,
+        ('tran', POINTER(glp_tran), 1),
+        ('fname', c_char_p, 1),
+    )
+    
+    # generate the model
+    glp_mpl_generate = cfunc(_glp+'mpl_generate', c_int,
+        ('tran', POINTER(glp_tran), 1),
+        ('fname', c_char_p, 1),
+    )
+    
+    # build LP/MIP problem instance from the model
+    glp_mpl_build_prob = cfunc(_glp+'mpl_build_prob', None,
+        ('tran', POINTER(glp_tran), 1),
+        ('prob', POINTER(glp_prob), 1),
+    )
+    
+    # postsolve the model
+    glp_mpl_postsolve = cfunc(_glp+'mpl_postsolve', c_int,
+        ('tran', POINTER(glp_tran), 1),
+        ('prob', POINTER(glp_prob), 1),
+        ('sol', c_int, 1),
+    )
+    
+    # free the MathProg translator workspace
+    glp_mpl_free_wksp = cfunc(_glp+'mpl_free_wksp', None,
+        ('tran', POINTER(glp_tran), 1),
+    )
+    
+
+#=============================================================================
 # Control parameters and statistics routines
 #=============================================================================
 
@@ -2041,6 +2138,12 @@ if _version >= (4, 21):
         ('j', c_int, 1),
         ('sel', c_int, 1),
     )
+
+if _version >= (4, 33):
+    # branch selection indicator:
+    GLP_NO_BRNCH       = 0  # select no branch
+    GLP_DN_BRNCH       = 1  # select down-branch
+    GLP_UP_BRNCH       = 2  # select up-branch
 
 if _version >= (4, 21):
     # Select subproblem to continue the search
