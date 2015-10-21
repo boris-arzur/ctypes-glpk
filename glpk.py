@@ -111,12 +111,10 @@ def _load_glpk():
     try:
         fi, fo = os.popen4('glpsol -v')
         fi.close()
-        tokens = fo.read().split()
+        glpsol_version_output = fo.read()
 
-        # Version GLPK detected!!
-        i = tokens.index('LP/MIP')
-        version_string = tokens[i+3] if tokens[i+1] == 'Solver,' else tokens[i+2] # not safe, but works for now
-        version = version_string.split('.')
+        import re
+        version = re.search("v(\d+)\.(\d+)", glpsol_version_output).groups()
         version = tuple([int(i) for i in version[:2]])
         
     except Exception, e:
